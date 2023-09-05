@@ -1,0 +1,46 @@
+trigger:
+  - main  # Replace with your branch name
+
+pr:
+- none
+
+pool:
+  name: YourLocalAgentPoolName  # Replace with the name of your local agent pool
+
+variables:
+  solution: '**/*.sln'
+  buildConfiguration: 'Release'
+  testResultsDirectory: '$(System.DefaultWorkingDirectory)/TestResults'
+
+steps:
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    installationPath: $(Agent.ToolsDirectory)/dotnet
+    version: '7.x'  # Replace with the version of .NET you are using
+    installationFallback: true
+  displayName: 'Use .NET SDK'
+
+- script: dotnet restore
+  displayName: 'Restore Dependencies'
+
+- script: dotnet build --configuration $(buildConfiguration) --no-restore
+  displayName: 'Build Solution'
+
+- script: dotnet test --configuration $(buildConfiguration) --no-build --collect "Code Coverage"
+  displayName: 'Run Tests'
+  continueOnError: true
+  env:
+    DOTNET_CLI_TELEMETRY_OPTOUT: true
+  workingDirectory: $(System.DefaultWorkingDirectory)/YourAspNet7ProjectFolder  # Replace with your project folder path
+
+- task: PublishCodeCoverageResults@1
+  inputs:
+    codeCoverageTool: 'cobertura'
+    summaryFileLocation: '$(System.DefaultWorkingDirectory)/**/coverage.cobertura.xml'
+    reportDirectory: '$(testResultsDirectory)/coverage'
+    failIfCoverageEmpty: false
+  condition: succeededOrFailed()
+  displayName: 'Publish Code Coverage Results'
+
+# Add more steps as needed for deployment or other tasks
